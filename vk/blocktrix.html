@@ -2,8 +2,12 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Тетрис</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Blocktrix VK</title>
+  
+  <!-- VK Bridge SDK -->
+  <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser/vk-bridge.js"></script>
+
   <style>
     :root {
       --cell: 30px;
@@ -13,7 +17,7 @@
       --accent: #6ee7ff;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -84,7 +88,7 @@
     .sidebar {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
       width: 180px;
     }
 
@@ -92,22 +96,22 @@
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 16px;
+      padding: 12px 16px;
       backdrop-filter: blur(12px);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
     }
 
     .panel h2 {
-      font-size: 13px;
+      font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 2px;
       color: #94a3b8;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       font-weight: 600;
     }
 
     .stat {
-      font-size: 30px;
+      font-size: 24px;
       font-weight: 700;
       color: var(--accent);
       text-shadow: 0 0 18px rgba(110, 231, 255, 0.5);
@@ -115,9 +119,12 @@
 
     .mini {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4, 18px);
+      grid-template-rows: repeat(4, 18px);
       gap: 3px;
       justify-content: center;
+      align-content: center;
+      min-height: 80px;
     }
     .mini .cell {
       width: 18px;
@@ -139,6 +146,7 @@
       border-radius: 10px;
       padding: 11px 14px;
       cursor: pointer;
+      touch-action: manipulation;
       transition: transform 0.1s, filter 0.2s;
     }
     button:hover { filter: brightness(1.1); }
@@ -147,7 +155,7 @@
     .hint {
       font-size: 11px;
       color: #7c86a5;
-      line-height: 1.7;
+      line-height: 1.6;
     }
     .hint b { color: #c4ccde; }
 
@@ -155,7 +163,7 @@
       position: absolute;
       inset: 12px;
       border-radius: 10px;
-      background: rgba(10, 12, 25, 0.85);
+      background: rgba(10, 12, 25, 0.88);
       backdrop-filter: blur(6px);
       display: flex;
       flex-direction: column;
@@ -167,35 +175,132 @@
     }
     .overlay.hidden { display: none; }
     .overlay h1 {
-      font-size: 34px;
+      font-size: 32px;
       background: linear-gradient(135deg, #6ee7ff, #a78bfa);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
     }
-    .overlay p { color: #aeb6cf; font-size: 15px; }
+    .overlay p { color: #aeb6cf; font-size: 14px; }
 
     .touch {
       display: none;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-top: 16px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-top: 14px;
     }
     .touch button {
       background: var(--panel);
       color: #e8ecf5;
       border: 1px solid var(--border);
-      font-size: 20px;
-      padding: 16px;
+      font-size: 18px;
+      padding: 12px 0;
     }
 
+    /* Мобильная адаптация */
     @media (max-width: 640px) {
-      :root { --cell: 26px; }
-      .game { flex-direction: column; align-items: center; }
-      .sidebar { flex-direction: row; flex-wrap: wrap; width: 100%; justify-content: center; }
-      .sidebar .panel { flex: 1; min-width: 120px; }
-      .touch { display: grid; width: 100%; max-width: 320px; }
+      :root { --cell: min(25px, 6.5vw); }
+      body { padding: 8px; }
+      
+      .game { 
+        flex-direction: column; 
+        align-items: center; 
+        gap: 6px; 
+        width: fit-content;
+      }
+      
+      .board-wrap {
+        order: 2;
+        padding: 8px;
+        border-radius: 14px;
+      }
+
+      .sidebar {
+        order: 1;
+        width: 100%;
+        flex-direction: row;
+        gap: 4px;
+        justify-content: space-between;
+      }
+
+      .panel {
+        height: 40px; /* Фиксированная высота как у нижнего ряда */
+        padding: 2px 4px;
+        border-radius: 8px;
+        text-align: center;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-width: 0;
+      }
+
+      .panel h2 {
+        font-size: 7px;
+        letter-spacing: 0.5px;
+        margin-bottom: 1px;
+        line-height: 1;
+      }
+
+      .panel.panel-controls h2 {
+        display: none;
+      }
+
+      .stat {
+        font-size: 12px;
+        line-height: 1;
+        text-shadow: none;
+      }
+
+      .mini {
+        grid-template-columns: repeat(4, 6px);
+        grid-template-rows: repeat(4, 6px);
+        gap: 1px;
+        min-height: auto;
+      }
+
+      .mini .cell {
+        width: 6px;
+        height: 6px;
+        border-radius: 1px;
+      }
+
+      .controls {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .controls button {
+        padding: 0;
+        height: 100%;
+        font-size: 9px;
+        width: 100%;
+        border-radius: 6px;
+      }
+
       .hint { display: none; }
+
+      .touch {
+        order: 3;
+        display: grid;
+        width: 100%;
+        margin-top: 0;
+        gap: 4px;
+      }
+
+      .touch button {
+        height: 40px; /* Фиксированная высота как у верхнего ряда */
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        border-radius: 8px;
+      }
     }
   </style>
 </head>
@@ -204,13 +309,17 @@
     <div class="board-wrap">
       <div id="board"></div>
       <div class="overlay" id="overlay">
-        <h1 id="overlay-title">ТЕТРИС</h1>
+        <h1 id="overlay-title">BLOCKTRIX</h1>
         <p id="overlay-text">Классическая головоломка</p>
         <button id="start-btn">Играть</button>
       </div>
     </div>
 
     <div class="sidebar">
+      <div class="panel">
+        <h2>Рекорд</h2>
+        <div class="stat" id="highscore">0</div>
+      </div>
       <div class="panel">
         <h2>Счёт</h2>
         <div class="stat" id="score">0</div>
@@ -220,14 +329,10 @@
         <div class="stat" id="level">1</div>
       </div>
       <div class="panel">
-        <h2>Линии</h2>
-        <div class="stat" id="lines">0</div>
-      </div>
-      <div class="panel">
         <h2>Далее</h2>
         <div class="mini" id="next"></div>
       </div>
-      <div class="panel">
+      <div class="panel panel-controls">
         <h2>Управление</h2>
         <div class="controls">
           <button id="pause-btn">Пауза</button>
@@ -241,16 +346,33 @@
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="touch">
-    <button data-act="left">◀</button>
-    <button data-act="rotate">⟳</button>
-    <button data-act="down">▼</button>
-    <button data-act="drop">⤓</button>
+    <div class="touch">
+      <button data-act="left">◀</button>
+      <button data-act="right">▶</button>
+      <button data-act="rotate">⟳</button>
+      <button data-act="down">▼</button>
+      <button data-act="drop">⤓</button>
+    </div>
   </div>
 
   <script>
+    // Инициализация VK Bridge
+    const hasVK = typeof vkBridge !== 'undefined';
+    if (hasVK) {
+      vkBridge.send('VKWebAppInit').catch(() => {});
+    }
+
+    // Тактильная отдача (вибрация на мобильном в VK)
+    function triggerHaptic(type, style) {
+      if (!hasVK) return;
+      if (type === 'impact') {
+        vkBridge.send('VKWebAppTapticImpactOccurred', { style: style || 'light' }).catch(() => {});
+      } else if (type === 'notification') {
+        vkBridge.send('VKWebAppTapticNotificationOccurred', { result: style || 'success' }).catch(() => {});
+      }
+    }
+
     const COLS = 10, ROWS = 20;
     const board = document.getElementById('board');
     const overlay = document.getElementById('overlay');
@@ -275,28 +397,60 @@
     };
 
     let grid = [];
-    let current, next, score, level, lines;
+    let boardCells = [];
+    let current, next, score, highScore = 0, level, lines;
     let dropInterval, dropCounter, lastTime, running, paused;
     let rafId;
 
-    // Кэш ячеек поля (вычисляется один раз)
-    const cellNodes = () => document.querySelectorAll('#board .cell');
+    // Загрузка рекорда из VK Storage / localStorage
+    async function loadHighScore() {
+      if (hasVK) {
+        try {
+          const res = await vkBridge.send('VKWebAppStorageGet', { keys: ['blocktrix_high_score'] });
+          if (res.keys && res.keys[0] && res.keys[0].value) {
+            highScore = parseInt(res.keys[0].value, 10) || 0;
+          }
+        } catch (e) {
+          highScore = parseInt(localStorage.getItem('blocktrix_high_score'), 10) || 0;
+        }
+      } else {
+        highScore = parseInt(localStorage.getItem('blocktrix_high_score'), 10) || 0;
+      }
+      document.getElementById('highscore').textContent = highScore;
+    }
+
+    // Сохранение рекорда
+    function checkHighScore() {
+      if (score > highScore) {
+        highScore = score;
+        document.getElementById('highscore').textContent = highScore;
+        if (hasVK) {
+          vkBridge.send('VKWebAppStorageSet', {
+            key: 'blocktrix_high_score',
+            value: String(highScore)
+          }).catch(() => {});
+        }
+        localStorage.setItem('blocktrix_high_score', String(highScore));
+      }
+    }
 
     function getCell(r, c) {
-      const node = cellNodes()[r * COLS + c];
-      return node || null;
+      return boardCells[r * COLS + c] || null;
     }
 
     function createBoard() {
       board.innerHTML = '';
       board.style.gridTemplateColumns = `repeat(${COLS}, var(--cell))`;
       grid = [];
+      boardCells = [];
+      
       for (let r = 0; r < ROWS; r++) {
         const row = [];
         for (let c = 0; c < COLS; c++) {
           const cell = document.createElement('div');
           cell.className = 'cell';
           board.appendChild(cell);
+          boardCells.push(cell);
           row.push(null);
         }
         grid.push(row);
@@ -311,6 +465,7 @@
       }
       return keys;
     }
+
     let queue = [];
     function nextPiece() {
       if (queue.length === 0) queue = bag();
@@ -348,6 +503,7 @@
           }
         });
       });
+      triggerHaptic('impact', 'medium');
     }
 
     function rotate(matrix) {
@@ -368,7 +524,10 @@
       for (const t of tests) {
         current.shape = rotated;
         current.x += t.x;
-        if (!collide(current, grid)) return;
+        if (!collide(current, grid)) {
+          triggerHaptic('impact', 'light');
+          return;
+        }
         current.x -= t.x;
       }
       current.shape = prev;
@@ -379,19 +538,20 @@
       for (let r = ROWS - 1; r >= 0; r--) {
         if (grid[r].every(cell => cell)) {
           grid.splice(r, 1);
-          const empty = [];
-          for (let c = 0; c < COLS; c++) empty.push(null);
+          const empty = Array(COLS).fill(null);
           grid.unshift(empty);
           cleared++;
           r++;
         }
       }
       if (cleared) {
+        triggerHaptic('notification', 'success');
         const points = [0, 100, 300, 500, 800][cleared] * level;
         score += points;
         lines += cleared;
         level = Math.floor(lines / 10) + 1;
         dropInterval = Math.max(80, 1000 - (level - 1) * 90);
+        checkHighScore();
         updateStats();
       }
     }
@@ -403,7 +563,6 @@
       if (collide(current, grid)) gameOver();
     }
 
-    // Рисует одну фигуру с проверкой ВСех границ
     function shade(piece, opacity) {
       piece.shape.forEach((row, r) => {
         row.forEach((v, c) => {
@@ -423,39 +582,45 @@
     }
 
     function draw() {
-      // 1. Фон сетки
       for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
           const el = grid[r][c];
           const node = getCell(r, c);
           if (!node) continue;
           node.style.background = el ? COLORS[el] : 'rgba(255,255,255,0.03)';
-          node.style.boxShadow  = el ? `0 0 12px ${COLORS[el]}` : 'none';
+          node.style.boxShadow = el ? `0 0 12px ${COLORS[el]}` : 'none';
           node.style.opacity = '1';
         }
       }
-
-      // 2. Призрачная фигура
-      const ghost = { shape: current.shape, x: current.x, y: current.y };
-      while (!collide(ghost, grid)) ghost.y++;
-      shade(ghost, '0.25');
-
-      // 3. Текущая фигура
       shade(current, '1');
     }
 
     function drawNext() {
       const mini = document.getElementById('next');
       mini.innerHTML = '';
+
       const shape = next.shape;
-      for (let r = 0; r < shape.length; r++) {
-        for (let c = 0; c < shape[r].length; c++) {
+      const rows = shape.length;
+      const cols = shape[0].length;
+
+      const offsetY = Math.floor((4 - rows) / 2);
+      const offsetX = Math.floor((4 - cols) / 2);
+
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
           const cell = document.createElement('div');
           cell.className = 'cell';
-          if (shape[r][c]) {
+
+          const shapeR = r - offsetY;
+          const shapeC = c - offsetX;
+
+          if (shapeR >= 0 && shapeR < rows && shapeC >= 0 && shapeC < cols && shape[shapeR][shapeC]) {
             cell.style.background = COLORS[next.key];
             cell.style.boxShadow = `0 0 10px ${COLORS[next.key]}`;
+          } else {
+            cell.style.background = 'transparent';
           }
+
           mini.appendChild(cell);
         }
       }
@@ -464,7 +629,6 @@
     function updateStats() {
       document.getElementById('score').textContent = score;
       document.getElementById('level').textContent = level;
-      document.getElementById('lines').textContent = lines;
     }
 
     function drop() {
@@ -479,6 +643,7 @@
     }
 
     function hardDrop() {
+      triggerHaptic('impact', 'heavy');
       while (!collide(current, grid)) {
         current.y++;
         score += 2;
@@ -486,6 +651,7 @@
       current.y--;
       merge(current);
       clearLines();
+      checkHighScore();
       spawn();
       updateStats();
       draw();
@@ -494,6 +660,7 @@
     function move(dir) {
       current.x += dir;
       if (collide(current, grid)) current.x -= dir;
+      else triggerHaptic('impact', 'light');
       draw();
     }
 
@@ -501,8 +668,12 @@
       if (!running || paused) return;
       const delta = time - lastTime;
       lastTime = time;
-      dropCounter += delta;
-      if (dropCounter > dropInterval) drop();
+
+      if (delta < 1000) {
+        dropCounter += delta;
+        if (dropCounter > dropInterval) drop();
+      }
+
       draw();
       rafId = requestAnimationFrame(update);
     }
@@ -510,7 +681,7 @@
     function startGame() {
       createBoard();
       score = 0; level = 1; lines = 0;
-      dropInterval = 1000; dropCounter = 0; lastTime = 0;
+      dropInterval = 1000; dropCounter = 0; lastTime = performance.now();
       paused = false; running = true;
       queue = [];
       current = nextPiece();
@@ -519,12 +690,14 @@
       drawNext();
       overlay.classList.add('hidden');
       cancelAnimationFrame(rafId);
-      update();
+      update(lastTime);
     }
 
     function gameOver() {
       running = false;
       cancelAnimationFrame(rafId);
+      triggerHaptic('notification', 'error');
+      checkHighScore();
       overlayTitle.textContent = 'Игра окончена';
       overlayText.textContent = `Ваш счёт: ${score}`;
       startBtn.textContent = 'Ещё раз';
@@ -548,12 +721,16 @@
 
     document.addEventListener('keydown', (e) => {
       if (!running) return;
+
+      const keys = ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' '];
+      if (keys.includes(e.key)) e.preventDefault();
+
       switch (e.key) {
         case 'ArrowLeft': move(-1); break;
         case 'ArrowRight': move(1); break;
-        case 'ArrowDown': drop(); score += 1; updateStats(); break;
+        case 'ArrowDown': drop(); score += 1; checkHighScore(); updateStats(); break;
         case 'ArrowUp': tryRotate(); draw(); break;
-        case ' ': e.preventDefault(); hardDrop(); break;
+        case ' ': hardDrop(); break;
         case 'p': case 'P': togglePause(); break;
       }
     });
@@ -576,7 +753,9 @@
       });
     });
 
+    // Стартовая инициализация
     createBoard();
+    loadHighScore();
   </script>
 </body>
 </html>
