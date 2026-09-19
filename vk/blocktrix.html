@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Тетрис VK</title>
+  
+  <!-- VK Bridge SDK -->
+  <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser/vk-bridge.js"></script>
+
+  <style>
+    :root {
+      --cell: 30px;
+      --bg: #0f1220;
+      --panel: rgba(255, 255, 255, 0.06);
+      --border: rgba(255, 255, 255, 0.12);
+      --accent: #6ee7ff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 0%, #1e2a4a 0%, var(--bg) 60%);
+      color: #e8ecf5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.35;
+      z-index: 0;
+    }
+    body::before {
+      width: 400px; height: 400px;
+      background: #7c3aed;
+      top: -120px; left: -100px;
+    }
+    body::after {
+      width: 350px; height: 350px;
+      background: #06b6d4;
+      bottom: -120px; right: -80px;
+    }
+
+    .game {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 22px;
+      align-items: flex-start;
+    }
+
+    .board-wrap {
+      position: relative;
+      padding: 12px;
+      border-radius: 18px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    #board {
+      display: grid;
+      gap: 2px;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 6px;
+      border-radius: 10px;
+    }
+
+    .cell {
+      width: var(--cell);
+      height: var(--cell);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.03);
+      transition: background 0.05s, opacity 0.05s;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 180px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px 16px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .panel h2 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #94a3b8;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .stat {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent);
+      text-shadow: 0 0 18px rgba(110, 231, 255, 0.5);
+    }
+
+    .mini {
+      display: grid;
+      grid-template-columns: repeat(4, 18px);
+      grid-template-rows: repeat(4, 18px);
+      gap: 3px;
+      justify-content: center;
+      align-content: center;
+      min-height: 80px;
+    }
+    .mini .cell {
+      width: 18px;
+      height: 18px;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      color: #0f1220;
+      background: linear-gradient(135deg, #8be9fd, #6200ea);
+      border: none;
+      border-radius: 10px;
+      padding: 11px 14px;
+      cursor: pointer;
+      transition: transform 0.1s, filter 0.2s;
+    }
+    button:hover { filter: brightness(1.1); }
+    button:active { transform: scale(0.96); }
+
+    .hint {
+      font-size: 11px;
+      color: #7c86a5;
+      line-height: 1.6;
+    }
+    .hint b { color: #c4ccde; }
+
+    .overlay {
+      position: absolute;
+      inset: 12px;
+      border-radius: 10px;
+      background: rgba(10, 12, 25, 0.88);
+      backdrop-filter: blur(6px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+      z-index: 5;
+      text-align: center;
+    }
+    .overlay.hidden { display: none; }
+    .overlay h1 {
+      font-size: 32px;
+      background: linear-gradient(135deg, #6ee7ff, #a78bfa);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .overlay p { color: #aeb6cf; font-size: 14px; }
+
+    .touch {
+      display: none;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-top: 14px;
+    }
+    .touch button {
+      background: var(--panel);
+      color: #e8ecf5;
+      border: 1px solid var(--border);
+      font-size: 18px;
+      padding: 12px 0;
+    }
+
+    @media (max-width: 640px) {
+      :root { --cell: 26px; }
+      body { padding: 10px; }
+      .game { flex-direction: column; align-items: center; gap: 12px; }
+      .sidebar { flex-direction: row; flex-wrap: wrap; width: 100%; justify-content: center; }
+      .sidebar .panel { flex: 1; min-width: 100px; padding: 8px 12px; text-align: center; }
+      .mini { min-height: auto; }
+      .touch { display: grid; width: 100%; max-width: 360px; }
+      .hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="game">
+    <div class="board-wrap">
+      <div id="board"></div>
+      <div class="overlay" id="overlay">
+        <h1 id="overlay-title">ТЕТРИС</h1>
+        <p id="overlay-text">Классическая головоломка</p>
+        <button id="start-btn">Играть</button>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="panel">
+        <h2>Рекорд</h2>
+        <div class="stat" id="highscore">0</div>
+      </div>
+      <div class="panel">
+        <h2>Счёт</h2>
+        <div class="stat" id="score">0</div>
+      </div>
+      <div class="panel">
+        <h2>Уровень</h2>
+        <div class="stat" id="level">1</div>
+      </div>
+      <div class="panel">
+        <h2>Далее</h2>
+        <div class="mini" id="next"></div>
+      </div>
+      <div class="panel">
+        <h2>Управление</h2>
+        <div class="controls">
+          <button id="pause-btn">Пауза</button>
+          <div class="hint">
+            <b>← →</b> — движение<br>
+            <b>↑</b> — поворот<br>
+            <b>↓</b> — ускорить<br>
+            <b>Space</b> — сброс<br>
+            <b>P</b> — пауза
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="touch">
+    <button data-act="left">◀</button>
+    <button data-act="right">▶</button>
+    <button data-act="rotate">⟳</button>
+    <button data-act="down">▼</button>
+    <button data-act="drop">⤓</button>
+  </div>
+
+  <script>
+    // Инициализация VK Bridge
+    const hasVK = typeof vkBridge !== 'undefined';
+    if (hasVK) {
+      vkBridge.send('VKWebAppInit').catch(() => {});
+    }
+
+    // Тактильная отдача (вибрация на мобильном в VK)
+    function triggerHaptic(type, style) {
+      if (!hasVK) return;
+      if (type === 'impact') {
+        vkBridge.send('VKWebAppTapticImpactOccurred', { style: style || 'light' }).catch(() => {});
+      } else if (type === 'notification') {
+        vkBridge.send('VKWebAppTapticNotificationOccurred', { result: style || 'success' }).catch(() => {});
+      }
+    }
+
+    const COLS = 10, ROWS = 20;
+    const board = document.getElementById('board');
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlay-title');
+    const overlayText = document.getElementById('overlay-text');
+    const startBtn = document.getElementById('start-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+
+    const COLORS = {
+      I: '#06b6d4', O: '#f4c542', T: '#a78bfa',
+      S: '#34d399', Z: '#f87171', J: '#60a5fa', L: '#fb923c'
+    };
+
+    const SHAPES = {
+      I: [[1,1,1,1]],
+      O: [[1,1],[1,1]],
+      T: [[0,1,0],[1,1,1]],
+      S: [[0,1,1],[1,1,0]],
+      Z: [[1,1,0],[0,1,1]],
+      J: [[1,0,0],[1,1,1]],
+      L: [[0,0,1],[1,1,1]]
+    };
+
+    let grid = [];
+    let boardCells = [];
+    let current, next, score, highScore = 0, level, lines;
+    let dropInterval, dropCounter, lastTime, running, paused;
+    let rafId;
+
+    // Загрузка рекорда из VK Storage / localStorage
+    async function loadHighScore() {
+      if (hasVK) {
+        try {
+          const res = await vkBridge.send('VKWebAppStorageGet', { keys: ['tetris_high_score'] });
+          if (res.keys && res.keys[0] && res.keys[0].value) {
+            highScore = parseInt(res.keys[0].value, 10) || 0;
+          }
+        } catch (e) {
+          highScore = parseInt(localStorage.getItem('tetris_high_score'), 10) || 0;
+        }
+      } else {
+        highScore = parseInt(localStorage.getItem('tetris_high_score'), 10) || 0;
+      }
+      document.getElementById('highscore').textContent = highScore;
+    }
+
+    // Сохранение рекорда
+    function checkHighScore() {
+      if (score > highScore) {
+        highScore = score;
+        document.getElementById('highscore').textContent = highScore;
+        if (hasVK) {
+          vkBridge.send('VKWebAppStorageSet', {
+            key: 'tetris_high_score',
+            value: String(highScore)
+          }).catch(() => {});
+        }
+        localStorage.setItem('tetris_high_score', String(highScore));
+      }
+    }
+
+    function getCell(r, c) {
+      return boardCells[r * COLS + c] || null;
+    }
+
+    function createBoard() {
+      board.innerHTML = '';
+      board.style.gridTemplateColumns = `repeat(${COLS}, var(--cell))`;
+      grid = [];
+      boardCells = [];
+      
+      for (let r = 0; r < ROWS; r++) {
+        const row = [];
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          board.appendChild(cell);
+          boardCells.push(cell);
+          row.push(null);
+        }
+        grid.push(row);
+      }
+    }
+
+    function bag() {
+      const keys = Object.keys(SHAPES);
+      for (let i = keys.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [keys[i], keys[j]] = [keys[j], keys[i]];
+      }
+      return keys;
+    }
+
+    let queue = [];
+    function nextPiece() {
+      if (queue.length === 0) queue = bag();
+      const key = queue.pop();
+      const shape = SHAPES[key];
+      return {
+        key,
+        shape: shape.map(r => [...r]),
+        x: Math.floor((COLS - shape[0].length) / 2),
+        y: 0
+      };
+    }
+
+    function collide(piece, g) {
+      const m = piece.shape;
+      for (let r = 0; r < m.length; r++) {
+        for (let c = 0; c < m[r].length; c++) {
+          if (!m[r][c]) continue;
+          const nx = piece.x + c;
+          const ny = piece.y + r;
+          if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+          if (ny >= 0 && g[ny][nx]) return true;
+        }
+      }
+      return false;
+    }
+
+    function merge(piece) {
+      piece.shape.forEach((row, r) => {
+        row.forEach((v, c) => {
+          if (v) {
+            const y = piece.y + r;
+            const x = piece.x + c;
+            if (y >= 0) grid[y][x] = piece.key;
+          }
+        });
+      });
+      triggerHaptic('impact', 'medium');
+    }
+
+    function rotate(matrix) {
+      const rows = matrix.length, cols = matrix[0].length;
+      const res = [];
+      for (let c = 0; c < cols; c++) {
+        const newRow = [];
+        for (let r = rows - 1; r >= 0; r--) newRow.push(matrix[r][c]);
+        res.push(newRow);
+      }
+      return res;
+    }
+
+    function tryRotate() {
+      const rotated = rotate(current.shape);
+      const prev = current.shape;
+      const tests = [{x:0},{x:1},{x:-1},{x:2},{x:-2}];
+      for (const t of tests) {
+        current.shape = rotated;
+        current.x += t.x;
+        if (!collide(current, grid)) {
+          triggerHaptic('impact', 'light');
+          return;
+        }
+        current.x -= t.x;
+      }
+      current.shape = prev;
+    }
+
+    function clearLines() {
+      let cleared = 0;
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (grid[r].every(cell => cell)) {
+          grid.splice(r, 1);
+          const empty = Array(COLS).fill(null);
+          grid.unshift(empty);
+          cleared++;
+          r++;
+        }
+      }
+      if (cleared) {
+        triggerHaptic('notification', 'success');
+        const points = [0, 100, 300, 500, 800][cleared] * level;
+        score += points;
+        lines += cleared;
+        level = Math.floor(lines / 10) + 1;
+        dropInterval = Math.max(80, 1000 - (level - 1) * 90);
+        checkHighScore();
+        updateStats();
+      }
+    }
+
+    function spawn() {
+      current = next;
+      next = nextPiece();
+      drawNext();
+      if (collide(current, grid)) gameOver();
+    }
+
+    function shade(piece, opacity) {
+      piece.shape.forEach((row, r) => {
+        row.forEach((v, c) => {
+          if (!v) return;
+          const y = piece.y + r;
+          const x = piece.x + c;
+          if (y < 0 || y >= ROWS || x < 0 || x >= COLS) return;
+          const node = getCell(y, x);
+          if (!node) return;
+          node.style.background = COLORS[piece.key];
+          node.style.opacity = opacity;
+          node.style.boxShadow = opacity === '1'
+            ? `0 0 16px ${COLORS[piece.key]}`
+            : 'none';
+        });
+      });
+    }
+
+    function draw() {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const el = grid[r][c];
+          const node = getCell(r, c);
+          if (!node) continue;
+          node.style.background = el ? COLORS[el] : 'rgba(255,255,255,0.03)';
+          node.style.boxShadow = el ? `0 0 12px ${COLORS[el]}` : 'none';
+          node.style.opacity = '1';
+        }
+      }
+      shade(current, '1');
+    }
+
+    function drawNext() {
+      const mini = document.getElementById('next');
+      mini.innerHTML = '';
+
+      const shape = next.shape;
+      const rows = shape.length;
+      const cols = shape[0].length;
+
+      const offsetY = Math.floor((4 - rows) / 2);
+      const offsetX = Math.floor((4 - cols) / 2);
+
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+
+          const shapeR = r - offsetY;
+          const shapeC = c - offsetX;
+
+          if (shapeR >= 0 && shapeR < rows && shapeC >= 0 && shapeC < cols && shape[shapeR][shapeC]) {
+            cell.style.background = COLORS[next.key];
+            cell.style.boxShadow = `0 0 10px ${COLORS[next.key]}`;
+          } else {
+            cell.style.background = 'transparent';
+          }
+
+          mini.appendChild(cell);
+        }
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('score').textContent = score;
+      document.getElementById('level').textContent = level;
+    }
+
+    function drop() {
+      current.y++;
+      if (collide(current, grid)) {
+        current.y--;
+        merge(current);
+        clearLines();
+        spawn();
+      }
+      dropCounter = 0;
+    }
+
+    function hardDrop() {
+      triggerHaptic('impact', 'heavy');
+      while (!collide(current, grid)) {
+        current.y++;
+        score += 2;
+      }
+      current.y--;
+      merge(current);
+      clearLines();
+      checkHighScore();
+      spawn();
+      updateStats();
+      draw();
+    }
+
+    function move(dir) {
+      current.x += dir;
+      if (collide(current, grid)) current.x -= dir;
+      else triggerHaptic('impact', 'light');
+      draw();
+    }
+
+    function update(time = 0) {
+      if (!running || paused) return;
+      const delta = time - lastTime;
+      lastTime = time;
+
+      if (delta < 1000) {
+        dropCounter += delta;
+        if (dropCounter > dropInterval) drop();
+      }
+
+      draw();
+      rafId = requestAnimationFrame(update);
+    }
+
+    function startGame() {
+      createBoard();
+      score = 0; level = 1; lines = 0;
+      dropInterval = 1000; dropCounter = 0; lastTime = performance.now();
+      paused = false; running = true;
+      queue = [];
+      current = nextPiece();
+      next = nextPiece();
+      updateStats();
+      drawNext();
+      overlay.classList.add('hidden');
+      cancelAnimationFrame(rafId);
+      update(lastTime);
+    }
+
+    function gameOver() {
+      running = false;
+      cancelAnimationFrame(rafId);
+      triggerHaptic('notification', 'error');
+      checkHighScore();
+      overlayTitle.textContent = 'Игра окончена';
+      overlayText.textContent = `Ваш счёт: ${score}`;
+      startBtn.textContent = 'Ещё раз';
+      overlay.classList.remove('hidden');
+    }
+
+    function togglePause() {
+      if (!running) return;
+      paused = !paused;
+      if (paused) {
+        overlayTitle.textContent = 'Пауза';
+        overlayText.textContent = 'Нажмите P для продолжения';
+        startBtn.textContent = 'Продолжить';
+        overlay.classList.remove('hidden');
+      } else {
+        overlay.classList.add('hidden');
+        lastTime = performance.now();
+        update();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!running) return;
+
+      const keys = ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', ' '];
+      if (keys.includes(e.key)) e.preventDefault();
+
+      switch (e.key) {
+        case 'ArrowLeft': move(-1); break;
+        case 'ArrowRight': move(1); break;
+        case 'ArrowDown': drop(); score += 1; checkHighScore(); updateStats(); break;
+        case 'ArrowUp': tryRotate(); draw(); break;
+        case ' ': hardDrop(); break;
+        case 'p': case 'P': togglePause(); break;
+      }
+    });
+
+    startBtn.addEventListener('click', () => {
+      if (paused) togglePause();
+      else startGame();
+    });
+    pauseBtn.addEventListener('click', togglePause);
+
+    document.querySelectorAll('.touch button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!running || paused) return;
+        const act = btn.dataset.act;
+        if (act === 'left') move(-1);
+        else if (act === 'right') move(1);
+        else if (act === 'rotate') { tryRotate(); draw(); }
+        else if (act === 'down') drop();
+        else if (act === 'drop') hardDrop();
+      });
+    });
+
+    // Стартовая инициализация
+    createBoard();
+    loadHighScore();
+  </script>
+</body>
+</html>
