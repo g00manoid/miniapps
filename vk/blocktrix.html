@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Тетрис VK</title>
+  <title>Blocktrix VK</title>
   
   <!-- VK Bridge SDK -->
   <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser/vk-bridge.js"></script>
@@ -213,7 +213,7 @@
     <div class="board-wrap">
       <div id="board"></div>
       <div class="overlay" id="overlay">
-        <h1 id="overlay-title">ТЕТРИС</h1>
+        <h1 id="overlay-title">BLOCKTRIX</h1>
         <p id="overlay-text">Классическая головоломка</p>
         <button id="start-btn">Играть</button>
       </div>
@@ -310,15 +310,15 @@
     async function loadHighScore() {
       if (hasVK) {
         try {
-          const res = await vkBridge.send('VKWebAppStorageGet', { keys: ['tetris_high_score'] });
+          const res = await vkBridge.send('VKWebAppStorageGet', { keys: ['blocktrix_high_score'] });
           if (res.keys && res.keys[0] && res.keys[0].value) {
             highScore = parseInt(res.keys[0].value, 10) || 0;
           }
         } catch (e) {
-          highScore = parseInt(localStorage.getItem('tetris_high_score'), 10) || 0;
+          highScore = parseInt(localStorage.getItem('blocktrix_high_score'), 10) || 0;
         }
       } else {
-        highScore = parseInt(localStorage.getItem('tetris_high_score'), 10) || 0;
+        highScore = parseInt(localStorage.getItem('blocktrix_high_score'), 10) || 0;
       }
       document.getElementById('highscore').textContent = highScore;
     }
@@ -330,11 +330,11 @@
         document.getElementById('highscore').textContent = highScore;
         if (hasVK) {
           vkBridge.send('VKWebAppStorageSet', {
-            key: 'tetris_high_score',
+            key: 'blocktrix_high_score',
             value: String(highScore)
           }).catch(() => {});
         }
-        localStorage.setItem('tetris_high_score', String(highScore));
+        localStorage.setItem('blocktrix_high_score', String(highScore));
       }
     }
 
